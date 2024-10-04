@@ -13,19 +13,37 @@ said software through python commands.
 
 import nanonis_tramea
 
-### Initializing Connection
+### Initializing Connection through the socket module
 
-nanonisInstance = nanonis_tramea.Nanonis(6501, '10.10.10.10')
+import socket
+
+connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+connection.connect((IP_ADRESS_HERE, PORT_HERE))
+
+nanonisInstance = nanonis_spm.Nanonis(connection)
 
 NOTE : THE PORT HAS TO BE AN INTEGER AND THE IP ADRESS A STRING
 
-### Example
+### Enabling Debug Console Output
 
-nanonisInstance.BiasSpectr_Open() --> Opens Bias Spectroscopy Module.
+The function "returnDebugInfo()" takes an integer as an argument. 
+This integer should be either 1 = on, or 0 = off. This option is off by default.
 
-Funtion Documentations can be found by either hovering over the function names
-or in the TCP Protocol Document, which is also where all the available functions
-are listed.
+Enable by running:
+nanonisInstance.returnDebugInfo(1)
+
+### Examples
+
+There is a collection of examples installed with the package.
+
+The description of all the available functions can be found in the TCP Protocol Document, and hovering on the function depending on the used IDE.
+
+IMPORTANT:
+The TCP Interface requires every argument to be of certain size (see documentation).
+This is why the Numpy dependency is required, since it enables the specification
+of variable sizes. 
+
 
 
 

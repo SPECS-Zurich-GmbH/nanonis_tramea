@@ -65,20 +65,36 @@ class Nanonis:
 
         return BodyPart
 
+    #Handles parsing of strings arrays from Client to Server (w. length prepended)
+    def handleArrayString(self, Array, BodyType, BodyPart):
+        arrayLength = len(Array)
+        nrbytes=4*arrayLength
+        BodyPart = BodyPart + struct.pack('>i', nrbytes)
+        BodyPart = BodyPart + struct.pack('>i', arrayLength)
+        for i in range(0, arrayLength):
+            Entry = self.handleString(Array[i],BodyType,bytearray())
+            BodyType = str(len(Entry)) + 's'
+            BodyPart = BodyPart + (struct.pack('>' + BodyType, Entry))  
+        return BodyPart
+
+    #Handles parsing of 2D arrays of floats
+    def handle2DArray(self, Array, BodyType, BodyPart):
+        arrayRows = len(Array) #number of rows
+        BodyPart = BodyPart + struct.pack('>i', arrayRows)
+        arrayColumns=len(Array[0]) #number of columns
+        BodyPart = BodyPart + struct.pack('>i', arrayColumns)
+        for i in range(0, arrayRows):
+            for j in range(0, arrayColumns):
+                Entry = float(Array[i][j])
+                BodyPart = BodyPart + (struct.pack('>' + BodyType[1], Entry))
+        return BodyPart
+
     # Handles parsing of arrays form Client to Server
     def handleArray(self, Array, BodyType, BodyPart):
         arrayLength = len(Array)
-
         for i in range(0, arrayLength):
-            if BodyType[2] == "c":
-                Entry = bytes(str(Array[i]), "utf-8")
-                print(Entry)
-            else:
-                Entry = Array[i]
-
-            print(BodyType[2])
-            BodyPart = BodyPart + (struct.pack('>' + BodyType[2], Entry))  # CANT HAVE X OR W IN THERE
-
+            Entry = Array[i]
+            BodyPart = BodyPart + (struct.pack('>' + BodyType[1], Entry))  
         return BodyPart
 
     def correctType(self, BodyType, Body):
@@ -105,7 +121,12 @@ class Nanonis:
                 instance = Body[i]
                 type = BodyType[i]
                 if "c" in BodyType[i]:
-                    BodyPart = self.handleString(Body[i], BodyType[i], BodyPart)
+                    if isinstance(Body[i], str)==True:
+                        #Array of chars (i.e. string)
+                        BodyPart = self.handleString(Body[i], BodyType[i], BodyPart)
+                    else:
+                        #array of strings
+                        BodyPart = self.handleArrayString(Body[i], BodyType[i], BodyPart)
                 elif "-" in BodyType[i]:
                     for j in range(0, len(Body[i])):
                         instance[j] = self.correctType(type[2], instance[j])
@@ -116,9 +137,14 @@ class Nanonis:
                         instance[j] = self.correctType(type[2], instance[j])
                         Body[i] = instance
                     BodyPart = self.handleArrayPrepend(Body[i], BodyType[i], BodyPart)
+                else:
+                    BodyPart = self.handleArray(Body[i], BodyType[i], BodyPart) 
             else:
-                Body[i] = self.correctType(BodyType[i], Body[i])
-                BodyPart = BodyPart + struct.pack('>' + BodyType[i], Body[i])
+                if "2" in BodyType[i]:
+                    BodyPart = self.handle2DArray(Body[i], BodyType[i], BodyPart)
+                else:
+                    Body[i] = self.correctType(BodyType[i], Body[i])
+                    BodyPart = BodyPart + struct.pack('>' + BodyType[i], Body[i])
 
         SendResponseBack = True
 
@@ -270,11 +296,16 @@ class Nanonis:
                     counter = counter + NoOfChars
                     Variables.append(String)
                 elif ResponseType[1] == '*':
-                    if universalLength == 0:
-                        universalLength = Variables[-1]
-                    Result = self.decodeArray(Response, counter, universalLength, ResponseType[2])  # Nano
-                    # print(ResponseType, ' : ', Result)
-                    counter = counter + (universalLength * 4)
+                    #if universalLength == 0:
+                    #    universalLength = Variables[-1]
+                    universalLength = Variables[0]
+                    if ResponseType[2] == 'c':
+                        Result = self.decodeStringPrepended(Response, counter, universalLength)
+                        counter = counter + universalLength
+                    else:
+                        Result = self.decodeArray(Response, counter, universalLength, ResponseType[2])  # Nano
+                        # print(ResponseType, ' : ', Result)
+                        counter = counter + (universalLength * 4)
                     Variables.append(Result)
                 else:  # ResponseType[1] == 'w':
                     Result = self.decodeArrayPrepended(Response, counter, Variables[-1], ResponseType[1])  # Nano
@@ -339,14 +370,13 @@ class Nanonis:
 
             UNIQUE FOR RETURN TYPES:
 
-            "**" Identifier for arrays that get returned without length prepended
+            "**" Identifier for arrays whose size is defined by the first argument as int
 
         '''
 
         response = self.send(Command, Body, BodyType)
         if response != []:
             ResponseData = self.parseGeneralResponse(response, ResponseTypes)
-            print(ResponseData)
             if self.displayInfo == 1:
                 self.printDebugInfo(ResponseTypes, ResponseData[2])
             return tuple(ResponseData)
@@ -391,7 +421,7 @@ class Nanonis:
 
         return self.quickSend("3DSwp.AcqChsGet", [], [], ["i", "*i", "i", "i", "*+c"])
 
-    def ThreeDSwp_SaveOptionsSet(self, Series_Name, Create_Date_Time_Folder, Comment, Modules_Names_Size, Modules_Names):
+    def ThreeDSwp_SaveOptionsSet(self, Series_Name, Create_Date_Time_Folder, Comment, Modules_Names):
         """
         Sets the saving options of the 3D Sweeper. Arguments:
 
@@ -412,7 +442,7 @@ class Nanonis:
 
     - Error described in the Response message>Body section
         """
-        return self.quickSend("3DSwp.SaveOptionsSet", [Series_Name, Create_Date_Time_Folder, Comment, Modules_Names_Size, Modules_Names], ["+*c", "i", "+*c", "i", "+*c"], [])
+        return self.quickSend("3DSwp.SaveOptionsSet", [Series_Name, Create_Date_Time_Folder, Comment, Modules_Names], ["+*c", "i", "+*c", "+*c"], [])
 
     def ThreeDSwp_SaveOptionsGet(self):
         """
@@ -662,7 +692,7 @@ class Nanonis:
         Sets the MultiSegment values of the Sweep Channel in the 3D Sweeper.
         Arguments:
 
-        - Number of segments (int) is the total number of segments. It defines the size of the following arrays
+        - Number of segments (int) is the total number of segments
         - Segment Start values (1D array float32) are the start values of the segments of the Sweep Channel
         - Segment Stop values (1D array float32) are the stop values of the segments of the Sweep Channel
         - Segment Settling times (1D array float32) are the settling times of the segments in seconds
@@ -674,7 +704,7 @@ class Nanonis:
 
         - Error described in the Response message>Body section
         """
-        return self.quickSend("3DSwp.SwpChMLSSet", [ NumOfSegments, StartVals, StopVals, SettlingTimes, IntegrationTimes, NoOfSteps, LastSegmentArray], ["i", "-*f","-*f","-*f","-*f","-*i", "-*I"], [])
+        return self.quickSend("3DSwp.SwpChMLSSet", [ NumOfSegments, StartVals, StopVals, SettlingTimes, IntegrationTimes, NoOfSteps, LastSegmentArray], ["i", "*f","*f","*f","*f","*i", "*I"], [])
 
     def  ThreeDSwp_SwpChMLSGet(self):
         """
@@ -863,7 +893,7 @@ class Nanonis:
         - Channels names (1D array string) returns the list of channels names. The size of each string item comes right before it as integer 32.
         - Error described in the Response message>Body section
         """
-        return self.quickSend("3DSwp.StpCh2SignalGet", [], [], ["i", "*+c", "i", "i", "*-c"])
+        return self.quickSend("3DSwp.StpCh2SignalGet", [], [], ["i", "*-c", "i", "i", "*+c"])
 
 
     def ThreeDSwp_StpCh2LimitsSet(self, Start, Stop):
@@ -920,7 +950,7 @@ class Nanonis:
          Error described in the Response message>Body section
 
         """
-        return self.quickSend("3DSwp.StpCh2PropsSet", [NumOfPoints, BwdSweep, EndOfSweep, EndOfSweepVal], ["i", "i", "i" "f"], [])
+        return self.quickSend("3DSwp.StpCh2PropsSet", [NumOfPoints, BwdSweep, EndOfSweep, EndOfSweepVal], ["i", "i", "i", "f"], [])
 
     def ThreeDSwp_StpCh2PropsGet(self):
         """
@@ -1144,7 +1174,7 @@ class Nanonis:
         return self.quickSend("3DSwp.FilePathsGet", [], [], ["i", "i", "*+c"])
 
 
-    def OneDSwp_AcqChsSet(self, ChannelIndexes):
+    def OneDSwp_AcqChsSet(self, Channel_indexes: list, Channel_names: list):
         """
         1DSwp.AcqChsSet
 
@@ -1158,25 +1188,23 @@ class Nanonis:
 
         - Error described in the Response message>Body section
         """
-        return self.quickSend("1DSwp.AcqChsSet", [ChannelIndexes], ["+*i"], [])
+        return self.quickSend("1DSwp.AcqChsSet", [Channel_indexes, Channel_names], ["+*i", "*+c"], [])
 
 
     def OneDSwp_AcqChsGet(self):
         """
-        1DSwp.AcqChsGet
-        Returns the list of recorded channels of the 1D Sweeper.
-
+        GenSwp.AcqChsGet
+        Returns the list of recorded channels of the Generic Sweeper.
         Arguments: None
-
         Return arguments (if Send response back flag is set to True when sending request message):
-
-        - Number of channels (int) is the number of recorded channels. It defines the size of the Channel indexes array
-        - Channel indexes (1D array int) are the indexes of the recorded channels. The indexes correspond to the list of Measurement in the Nanonis software.
-        To get the Measurements names use the Signals.MeasNamesGet function
-        - Error described in the Response message>Body section
-
+        
+        -- Number of channels (int) is the number of recorded channels. It defines the size of the Channel indexes array
+        -- Channel indexes (1D array int) are the indexes of the recorded channels. The indexes correspond to the list of Measurement in the Nanonis software.
+        To get the Measurements  names use the <i>Signals.MeasNamesGet </i>function
+        -- Error described in the Response message&gt;Body section
+        
         """
-        return self.quickSend("1DSwp.AcqChsGet", [], [], ["i", "*+i"])
+        return self.quickSend("1DSwp.AcqChsGet", [], [], ["i", "*i"])
 
     def OneDSwp_SwpSignalSet(self, SweepChannelName):
         """
@@ -1211,7 +1239,7 @@ class Nanonis:
         - Error described in the Response message>Body section
 
         """
-        return self.quickSend("1DSwp.SwpSignalGet", [], [], ["i", "*+c", "i", "i", "*+c"])
+        return self.quickSend("1DSwp.SwpSignalGet", [], [], ["i", "*-c", "i", "i", "*+c"])
 
     def OneDSwp_LimitsSet(self, LowerLimit, UpperLimit):
         """
@@ -1245,26 +1273,28 @@ class Nanonis:
         return self.quickSend("1DSwp.LimitsGet", [], [], ["f", "f"])
 
 
-    def OneDSwp_PropsSet(self, InitSettlingTime, MaxSlewRate, NoOfSteps, Period, Autosave, SaveDialogBox, SettlingTime):
+    def OneDSwp_PropsSet(self, Initial_Settling_time_ms, Maximum_slew_rate_unitsdivs, Number_of_steps, Period_ms,
+                        Autosave, Save_dialog_box, Settling_time_ms):
         """
         1DSwp.PropsSet
         Sets the configuration of the parameters in the 1D Sweeper.
-
-        Arguments:
-        - Initial Settling time (ms) (float32)
-        - Maximum slew rate (units/s) (float32)
-        - Number of steps (int) defines the number of steps of the sweep. 0 points means no change
-        - Period (ms) (unsigned int16) where 0 means no change
-        - Autosave (int) defines if the sweep is automatically saved, where -1=no change, 0=Off, 1=On
-        - Save dialog box (int) defines if the save dialog box shows up or not, where -1=no change, 0=Off, 1=On
-        - Settling time (ms) (float32)
-
+        Arguments: 
+        -- Initial Settling time (ms) (float32) 
+        -- Maximum slew rate (units/s) (float32) 
+        -- Number of steps (int) defines the number of steps of the sweep. 0 points means no change
+        -- Period (ms) (unsigned int16) where 0 means no change
+        -- Autosave (int) defines if the sweep is automatically saved, where -1_no change, 0_Off, 1_On
+        -- Save dialog box (int) defines if the save dialog box shows up or not, where -1_no change, 0_Off, 1_On
+        -- Settling time (ms) (float32) 
+        
         Return arguments (if Send response back flag is set to True when sending request message):
-
-        - Error described in the Response message>Body section
-
+        
+        -- Error described in the Response message&gt;Body section
+        
         """
-        return self.quickSend("1DSwp.PropsSet", [InitSettlingTime, MaxSlewRate, NoOfSteps, Period, Autosave, SaveDialogBox, SettlingTime], ["f", "f", "i", "H", "i", "i" "f"], [])
+        return self.quickSend("1DSwp.PropsSet",
+                              [Initial_Settling_time_ms, Maximum_slew_rate_unitsdivs, Number_of_steps, Period_ms,
+                               Autosave, Save_dialog_box, Settling_time_ms], ["f", "f", "i", "H", "i", "i", "f"], [])
 
 
     def OneDSwp_PropsGet(self):
@@ -1288,7 +1318,7 @@ class Nanonis:
         return self.quickSend("1DSwp.PropsGet", [], [], ["f", "f", "i", "H", "I", "I", "f"])
 
 
-    def OneDSwp_Start(self, GetData, SweepDirection, SaveBaseName, ResetSignal):
+    def OneDSwp_Start(self, GetData, SweepDirection, SaveBaseName, ResetSignal, DummyValue):
         """
         1DSwp.Start
         Starts the sweep in the 1D Sweeper.
@@ -1301,6 +1331,7 @@ class Nanonis:
         - Save base name string size (int) defines the number of characters of the Save base name string
         - Save base name (string) is the basename used by the saved files. If empty string, there is no change
         - Reset signal (unsigned int32) where 0=Off, 1=On
+        - Dummy value (unsigned int16) used internally by the Nanonis software. It must be set to 0
 
 
         Return arguments (if Send response back flag is set to True when sending request message):
@@ -1315,7 +1346,7 @@ class Nanonis:
         - Data (2D array float32) returns the sweep data
         - Error described in the Response message>Body section
         """
-        return self.quickSend("1DSwp.Start", [GetData, SweepDirection, SaveBaseName, ResetSignal], ["I", "I", "+*c", "I"], ["i", "i", "*+c", "i", "i", "2f"])
+        return self.quickSend("1DSwp.Start", [GetData, SweepDirection, SaveBaseName, ResetSignal, DummyValue], ["I", "I", "+*c", "I", "H"], ["i", "i", "*+c", "i", "i", "2f"])
 
 
     def OneDSwp_Stop(self):
@@ -2081,7 +2112,7 @@ class Nanonis:
         """
         return self.quickSend("Script.ChsGet", [Acquire_buffer], ["H"], ["i", "*i"])
 
-    def Script_ChsSet(self, Acquire_buffer, Number_of_channels, Channel_indexes):
+    def Script_ChsSet(self, Acquire_buffer, Channel_indexes):
         """
         Script.ChsSet
         Sets the list of acquired channels in the Script module.
@@ -2096,7 +2127,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("Script.ChsSet", [Acquire_buffer, Number_of_channels, Channel_indexes], ["H", "i", "-*i"],
+        return self.quickSend("Script.ChsSet", [Acquire_buffer, Channel_indexes], ["H", "+*i"],
                               [])
 
     def Script_DataGet(self, Acquire_buffer, Sweep_number):
@@ -2139,6 +2170,584 @@ class Nanonis:
         return self.quickSend("Script.Autosave", [Acquire_buffer, Sweep_number, All_sweeps_to_same_file],
                               ["H", "i", "I"], [])
 
+    def HSSwp_AcqChsSet(self, Channel_Indexes:list):
+        """
+        HSSwp.AcqChsSet
+        Sets the list of recorded channels of the High-Speed Sweeper.
+
+        Arguments:
+
+        - Number of channels (int) is the number of recorded channels. It defines the size of the Channel indexes array
+        - Channel indexes (1D array int) are the indexes of recorded channels.
+        To obtain a list of the available channels, use the HSSwp.AcqChsGet function.
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.AcqChsSet", [Channel_Indexes], ["+*i"], [])
+
+    def HSSwp_AcqChsGet(self):
+        """
+        HSSwp.AcqChsGet
+        Returns the list of recorded channels of the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Number of channels (int) is the number of recorded channels. It defines the size of the Channel indexes array
+        - Channel indexes (1D array int) are the indexes of the recorded channels. The indexes correspond to the indices in the Available Channels indexes array.
+        - Available Channels names size (int) is the size in bytes of the available channels names array
+        - Available Channels names number (int) is the number of elements of the available channels names array
+        - Available Channels names (1D array string) returns an array of channel names strings, where each string
+        comes prepended by its size in bytes
+        - Number of available channels (int) is the number of available channels. It defines the size of the
+        Available Channels indexes array
+        - Available Channels indexes (1D array int) are the indexes of channels available for acquisition.
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.AcqChsGet", [], [], ["i", "*I", "i", "i", "*+c", "i", "*i"])
+
+    def HSSwp_AutoReverseSet(self, OnOff, Condition, Signal, Threshold, LinkToOne, Condition2, Signal2, Threshold2):
+        """
+        HSSwp.AutoReverseSet
+        Sets the auto-reverse configuration of the sweep axis in the High-Speed Sweeper.
+
+        Arguments:
+
+        - On/Off (int) defines if the auto-reverse functionality is on or off, where 0=Off, 1=On
+        - Condition (int) defines if the signal must be greater or less than the threshold for the reverse condition to
+        activate, where 0 = >, 1 = <
+        - Signal (int) sets the signal for the reverse condition. The list of available signals is the same as the
+        acquisition signals (see HSSwp.AcqChsGet function).
+         - Threshold (float32) defines the threshold to which the signal is compared.
+        - Linkage to 1 (int) defines the linkage of the 2nd reverse condition to the first condition. Possible values: 0 =
+        Off (no 2nd condition), 1 = OR (condition 1 or 2 must be met), 2 = AND (conditions 1 and 2 must be met at
+        the same time), 3 = THEN (condition 1 must be met first, then condition 2).
+        - Condition 2 (int) defines if the signal must be greater or less than the threshold for the 2nd reverse condition
+        to activate, where 0 = >, 1 = <
+        - Signal 2 (int) sets the signal for the 2nd reverse condition. The list of available signals is the same as the
+        acquisition signals (see HSSwp.AcqChsGet function).
+        - Threshold 2 (float32) defines the threshold to which the signal 2 is compared.
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.AutoReverseSet",
+                              [OnOff, Condition, Signal, Threshold, LinkToOne, Condition2, Signal2, Threshold2],
+                              ["i", "i", "i", "f", "i", "i", "i", "f"], [])
+
+    def HSSwp_AutoReverseGet(self):
+        """
+        HSSwp.AutoReverseGet
+        Returns the auto-reverse configuration of the sweep axis in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - On/Off (int) specifies if the auto-reverse functionality is on or off, where 0=Off, 1=On
+        - Condition (int) specifies if the signal must be greater or less than the threshold for the reverse condition to
+        activate, where 0 = >, 1 = <
+        - Signal (int) is the signal for the reverse condition. The list of available signals is the same as the acquisition
+        signals (see HSSwp.AcqChsGet function).
+        - Threshold (float32) is the threshold to which the signal is compared.
+        - Linkage to 1 (int) specifies the linkage of the 2nd reverse condition to the first condition. Possible values: 0
+        = Off (no 2nd condition), 1 = OR (condition 1 or 2 must be met), 2 = AND (conditions 1 and 2 must be met
+        at the same time), 3 = THEN (condition 1 must be met first, then condition 2).
+        - Condition 2 (int) specifies if the signal must be greater or less than the threshold for the 2nd reverse
+        condition to activate, where 0 = >, 1 = <
+        - Signal 2 (int) is the signal for the 2nd reverse condition. The list of available signals is the same as the
+        acquisition signals (see HSSwp.AcqChsGet function).
+        - Threshold 2 (float32) is the threshold to which the signal 2 is compared.
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.AutoReverseGet", [], [], ["i", "i", "i", "f", "i", "i", "i", "f"])
+
+    def HSSwp_EndSettlSet(self, Threshold):
+        """
+        HSSwp.EndSettlSet
+        Sets the end settling time in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Threshold (float32) defines the end settling time in seconds
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.EndSettlSet", [Threshold], ["f"], [])
+
+    def HSSwp_EndSettlGet(self):
+        """
+        HSSwp.EndSettlGet
+        Returns the end settling time in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Threshold (float32) is the end settling time in seconds
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.EndSettlGet", [], [], ["f"])
+
+    def HSSwp_NumSweepsSet(self, Number_Of_Sweeps, Continuous):
+        """
+        HSSwp.NumSweepsSet
+        Sets the number of sweeps in the High-Speed Sweeper.
+
+        Arguments:
+        - Number of sweeps (unsigned int32) sets the number of sweeps (ignored when continuous is set)
+        - Continuous (int) sets the continuous sweep mode, where 0=Off, 1=On
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.NumSweepsSet", [Number_Of_Sweeps, Continuous], ["I", "i"], [])
+
+    def HSSwp_NumSweepsGet(self):
+        """
+        HSSwp.NumSweepsGet
+        Returns the number of sweeps in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Number of sweeps (unsigned int32) is the number of sweeps
+        - Continuous (int) specifies the continuous sweep mode, where 0=Off, 1=On
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.NumSweepsGet", [], [], ["I", "i"])
+
+    def HSSwp_ResetSignalsSet(self, ResetSignals):
+        """
+        HSSwp.ResetSignalsSet
+        Specifies if the sweep and step signals should be reset to their initial values at the end of the sweep in the High- Speed Sweeper.
+
+        Arguments:
+
+        - Reset Signals (int) defines if the sweep and step signals are reset at the end of the sweep, where 0=Off, 1=On
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+         - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.ResetSignalsSet", [ResetSignals], ["i"], [])
+
+    def HSSwp_ResetSignalsGet(self):
+        """
+        HSSwp.ResetSignalsGet
+        Returns if the sweep and step signals are reset to their initial values at the end of the sweep in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Reset Signals (int) returns if the sweep and step signals are reset at the end of the sweep, where 0=Off, 1=On
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.ResetSignalsGet", [], [], ["i"])
+
+    def HSSwp_SaveBasenameSet(self, Basename):
+        """
+        HSSwp.SaveBasenameSet
+        Sets the save basename in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Basename size (int) is the size (number of characters) of the basename string
+        - Basename (string) is the base name used for the saved sweeps
+
+        Return arguments (if Send response back flag is set to True when sending request message to the server):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SaveBasenameSet", [Basename], ["+*c"], [])
+
+    def HSSwp_SaveBasenameGet(self):
+        """
+
+        HSSwp.SaveBasenameGet
+        Returns the save basename in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message to the server):
+
+        - Basename size (int) is the size (number of characters) of the basename string
+        - Basename (string) is the base name used for the saved sweeps
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.SaveBasenameGet", [], [], ["i", "*-c"])
+
+    def HSSwp_SaveDataSet(self, SaveData):
+        """
+        HSSwp.SaveDataSet
+
+        Specifies if the data acquired in the High-Speed Sweeper is saved or not.
+
+        Arguments:
+
+        - Save Data (int) defines if the data is saved, where 0=Off, 1=On
+
+         Return arguments (if Send response back flag is set to True when sending request message):
+
+         - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SaveDataSet", [SaveData], ["i"], [])
+
+    def HSSwp_SaveDataGet(self):
+        """
+        HSSwp.SaveDataGet
+        Returns if the data acquired in the High-Speed Sweeper is saved or not.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Save Data (int) returns if the data is saved, where 0=Off, 1=On
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SaveDataGet", [], [], ["i"])
+
+    def HSSwp_SaveOptionsSet(self, Comment, ModulesNames):
+        """
+        HSSwp.SaveOptionsSet
+        Sets save options in the High-Speed Sweeper.
+
+        Arguments:
+        - Comment size (int) is the size (number of characters) of the comment string
+        - Comment (string) is the comment saved in the header of the files. If empty string, there is no change
+        - Modules names size (int) is the size in bytes of the modules array. These are the modules whose
+        parameters are saved in the header of the files
+        - Modules names number (int) is the number of elements of the modules names array
+        - Modules names (1D array string) is an array of modules names strings, where each string comes
+        prepended by its size in bytes
+
+        """
+        return self.quickSend("HSSwp.SaveOptionsSet", [Comment, ModulesNames], ["+*c", "+*c"], [])
+
+    def HSSwp_SaveOptionsGet(self):
+        """
+        HSSwp.SaveOptionsGet
+        Returns the saving options of the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message to the server):
+
+        - Comment size (int) is the size (number of characters) of the comment string
+        - Comment (string) is the comment saved in the header of the files
+        - Modules parameters size (int) is the size in bytes of the modules parameters array. These are the modules
+        parameters saved in the header of the files
+        - Modules parameters number (int) is the number of elements of the modules parameters array
+        - Modules parameters (1D array string) is an array of modules names strings, where each string comes
+        prepended by its size in bytes.
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SaveOptionsGet", [], [], ["i", "*-c", "i", "i", "*+c"])
+
+    def HSSwp_Start(self, Wait_Until_Done, Timeout):
+        """
+        HSSwp.Start
+        Starts a sweep in the High-Speed Sweeper module.
+        When Send response back is set to True, it returns immediately afterwards.
+
+        Arguments:
+
+        - Wait until done (int) specifies whether the function waits with sending back the return arguments until the sweep is finished, where 0=Off (don’t wait), 1=On (wait)
+        - Timeout (int) sets the wait timeout in milliseconds. Use -1 for indefinite wait. The Timeout is ignored when wait until done is off.
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.Start", [Wait_Until_Done, Timeout], ["i", "i"], [])
+
+    def HSSwp_Stop(self):
+        """
+        HSSwp.Stop
+        Stops the sweep in the High-Speed Sweeper module.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.Stop", [], [], [])
+
+    def HSSwp_StatusGet(self):
+        """
+        HSSwp.StatusGet
+        Returns the status of the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Status (unsigned int32) is status of the High-Speed Sweeper, where 0=Stopped, 1=Running
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.StatusGet", [], [], ["I"])
+
+    def HSSwp_SwpChSigListGet(self):
+        """
+        HSSwp.SwpChSigListGet
+        Returns the list of available signals for the Sweep channel of the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message to the server):
+
+        - Signal names size (int) is the size in bytes of the signal names array
+        - Signal names number (int) is the number of elements of the signal names array
+         - Signal names (1D array string) is an array of signal names strings, where each string comes prepended by its size in bytes.
+        - Number of signals (int) is the number of available sweep signals. It defines the size of the Available Channels indexes array
+        - Signal indexes (1D array int) are the indexes of signals available for the sweep channel.
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChSigListGet", [], [], ["+*c", "+*i"])
+
+    def HSSwp_SwpChSignalSet(self, Sweep_Signal_Index, Timed_Sweep):
+        """
+        HSSwp.SwpChSignalSet
+        Sets the Sweep Channel signal in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Sweep signal index (int) is the index of the Sweep Signal. Use the HSSwp.SwpChSigListGet function to obtain a list of available sweep signals.
+        - Timed Sweep (int) enables or disables timed sweep mode. When on, the Sweep channel is ignored. 0=Off (sweep signal), 1=On (timed sweep)
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChSignalSet", [Sweep_Signal_Index, Timed_Sweep], ["i", "i"], [])
+
+    def HSSwp_SwpChSignalGet(self):
+        """
+        HSSwp.SwpChSignalGet
+        Returns the Sweep Channel signal in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Sweep signal index (int) is the index of the Sweep Signal. Use the HSSwp.SwpChSigListGet function to obtain a list of available sweep signals.
+        - Timed Sweep (int) specifies if timed sweep mode is enabled, where 0=Off (sweep signal), 1=On (timed sweep)
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.SwpChSignalGet", [], [], ["i", "i"])
+
+    def HSSwp_SwpChLimitsSet(self, Relative_Limits, Start, Stop):
+        """
+        HSSwp.SwpChLimitsSet
+        Sets the limits of the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Relative Limits (int) specifies if the limits are absolute or relative to the current sweep signal value. Possible values are 0=Absolute limits, 1=Relative limits.
+        - Start (float32) defines the value where the sweep starts
+        - Stop (float32) defines the value where the sweep stops
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+         - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChLimitsSet", [Relative_Limits, Start, Stop], ["i", "f", "f"], [])
+
+    def HSSwp_SwpChLimitsGet(self):
+        """
+        HSSwp.SwpChLimitsGet
+        Returns the limits of the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Relative Limits (int) specifies if the limits are absolute or relative to the current sweep signal value. Possible values are 0=Absolute limits, 1=Relative limits.
+        - Start (float32) defines the value where the sweep starts
+        - Stop (float32) defines the value where the sweep stops
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChLimitsGet", [], [], ["i", "f", "f"])
+
+    def HSSwp_SwpChNumPtsSet(self, Number_Of_Points):
+        """
+        HSSwp.SwpChNumPtsSet
+        Sets the number of points for the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Number of points (unsigned int32) sets the number of points of the sweep.
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChNumPtsSet", [Number_Of_Points], ["I"], [])
+
+    def HSSwp_SwpChNumPtsGet(self):
+        """
+        HSSwp.SwpChNumPtsGet
+        Returns the number of points for the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Number of points (int) returns the number of points of the sweep
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.SwpChNumPtsGet", [], [], ["i"])
+
+    def HSSwp_SwpChTimingSet(self, Initial_Settling_Time, Settling_Time, Integration_Time, Max_Slew_Time):
+        """
+        HSSwp.SwpChTimingSet
+        Sets the timing parameters of the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Initial settling time (s) (float32)
+        - Settling time (s) (float32)
+         - Integration time (s) (float32)
+        - Maximum slew rate (units/s) (float32)
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChTimingSet", [Initial_Settling_Time, Settling_Time, Integration_Time, Max_Slew_Time],
+                              ["f", "f", "f", "f"], [])
+
+    def HSSwp_SwpChTimingGet(self):
+        """
+        HSSwp.SwpChTimingGet
+        Returns the timing parameters of the Sweep Channel in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Initial settling time (s) (float32)
+        - Settling time (s) (float32)
+        - Integration time (s) (float32)
+        - Maximum slew rate (units/s) (float32)
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.SwpChTimingGet", [], [], ["f", "f", "f", "f"])
+
+    def HSSwp_SwpChBwdSwSet(self, Bwd_Sweep):
+        """
+        HSSwp.SwpChBwdSwSet
+        Enables or disables the backward sweep for the sweep channel in the High-Speed Sweeper.
+
+        Arguments:
+
+        - Bwd Sweep (unsigned int32) defines if the backward sweep is enabled, where 0=Off, 1=On
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChBwdSwSet", [Bwd_Sweep], ["I"], [])
+
+    def HSSwp_SwpChBwdSwGet(self):
+        """
+        HSSwp.SwpChBwdSwGet
+        Returns if the backward sweep of the sweep channel in the High-Speed Sweeper is enabled or not.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Bwd Sweep (unsigned int32) specifies if the backward sweep is enabled, where 0=Off, 1=On
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChBwdSwGet", [], [], ["I"])
+
+    def HSSwp_SwpChBwdDelaySet(self, Bwd_Delay):
+        """
+        HSSwp.SwpChBwdDelaySet
+        Sets the delay between forward and backward sweep of the sweep channel in the High-Speed Sweeper.
+         Arguments:
+
+        - Bwd Delay (float32) sets the delay between forward and backward sweep in seconds.
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChBwdDelaySet", [Bwd_Delay], ["f"], [])
+
+    def HSSwp_SwpChBwdDelayGet(self):
+        """
+        HSSwp.SwpChBwdDelayGet
+        Returns the delay between forward and backward sweep of the sweep channel in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Bwd Delay (float32) is the delay between forward and backward sweep in seconds
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.SwpChBwdDelayGet", [], [], ["f"])
+
+    def HSSwp_ZCtrlOffSet(self, Z_Controller_Off, Z_Controller_Index, Z_Averaging_Time, Z_Offset, Z_Control_Time):
+        """
+        HSSwp.ZCtrlOffSet
+        Sets the Z-Controller behavior for the duration of the sweep in the High-Speed Sweeper.
+
+        Arguments:
+        - Z-Controller Off (int) defines if the Z-Controller should be switched off during the sweep, where -1=no change, 0=switch off, 1=don’t switch
+        - Z-Controller index (int) specifies which Z-Controller to switch off, where 0=no change, 1=Z-Controller of tip 1, 2-4=Z-Controllers tips 2-4 (multiprobe systems only)
+        - Z Averaging Time (float32) sets the time (in seconds) to average the Z position before switching off the Z- controller
+        - Z Offset (float32) sets the Z offset (in meters) by which the tip is retracted after switching off the controller
+        - Z Control Time (float32) sets the time (in seconds) to wait after switching the Z-Controller back on (in
+        case it was switched off)
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("HSSwp.ZCtrlOffSet",
+                              [Z_Controller_Off, Z_Controller_Index, Z_Averaging_Time, Z_Offset, Z_Control_Time],
+                              ["i", "i", "f", "f", "f"], [])
+
+    def HSSwp_ZCtrlOffGet(self):
+        """
+        HSSwp.ZCtrlOffGet
+        Returns the Z-Controller behavior for the duration of the sweep in the High-Speed Sweeper.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Z-Controller Off (int) defines if the Z-Controller is switched off during the sweep, where 0=switch off, 1=don’t switch
+        - Z-Controller Index (int) defines which Z-Controller is switched off during the sweep, where 1=Z- Controller of tip 1, 2-4=Z-Controllers tips 2-4 (multiprobe systems only)
+        - Z Averaging Time (float32) is the time (in seconds) to average the Z position before switching off the Z- controller
+        - Z Offset (float32) is the Z offset (in meters) by which the tip is retracted after switching off the controller
+        - Z Control Time (float32) is the time (in seconds) to wait after switching the Z-Controller back on (in case
+        it was switched off)
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("HSSwp.ZCtrlOffGet", [], [], ["i", "i", "f", "f", "f"])
+
     def Signals_NamesGet(self):
         """
         Signals.NamesGet
@@ -2154,42 +2763,6 @@ class Nanonis:
         
         """
         return self.quickSend("Signals.NamesGet", [], [], ["i", "i", "*+c"])
-
-    def Signals_InSlotSet(self, Slot, RT_signal_index):
-        """
-        Signals.InSlotSet
-        Assigns one of the 128 available signals to one of the 24 slots of the Signals Manager.
-        Arguments: 
-        -- Slot (int) is the index of the slot in the Signals Manager where one of the 128 RT signals is assigned, so that index could be any value from 0 to 23
-        -- RT signal index (int) is the index of the RT signal to assign to the selected slot, so that index could be any value from 0 to 127
-        
-        Return arguments (if Send response back flag is set to True when sending request message):
-        
-        -- Error described in the Response message&gt;Body section
-        
-        
-        """
-        return self.quickSend("Signals.InSlotSet", [Slot, RT_signal_index], ["i", "i"], [])
-
-    def Signals_InSlotsGet(self):
-        """
-        Signals.InSlotsGet
-        Returns a list of the signals names and indexes of the 24 signals assigned to the slots of the Signals Manager.
-        The 24 signals are selected in the Signals Manager out of the 128 signals available in the software, and they are used in the list of available signals to display in graphs and other modules.
-        The index of every signal corresponds to the index in the list of 128 signals (0-127). The latter can be returned by the <i>Signals.NamesGet</i> function.
-        Arguments: None
-        Return arguments (if Send response back flag is set to True when sending request message):
-        
-        -- Signals names size (int) is the size in bytes of the signals names array
-        -- Number of Signals (int) is the number of elements of the signals names array
-        -- Signals names (1D array string) returns an array of signals names. Each element of the array is preceded by its size in bytes
-        -- Signals indexes size (int) is the size of the signals indexes array
-        -- Signals indexes (1D array int) returns an array of signals indexes
-        -- Error described in the Response message&gt;Body section
-        
-        
-        """
-        return self.quickSend("Signals.InSlotsGet", [], [], ["i", "i", "*+c", "i", "*i"])
 
     def Signals_CalibrGet(self, Signal_index):
         """
@@ -2295,7 +2868,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("Signals.AddRTGet", [], [], ["i", "*+c", "*-c", "*-c"])
+        return self.quickSend("Signals.AddRTGet", [], [], ["i", "i", "*+c", "i", "*-c", "i", "*-c"])
 
     def Signals_AddRTSet(self, Additional_RT_signal_1, Additional_RT_signal_2):
         """
@@ -2460,19 +3033,39 @@ class Nanonis:
         """
         return self.quickSend("UserOut.CalcSignalNameGet", [Output_index], ["i"], ["i", "*-c"])
 
-    def UserOut_CalcSignalConfigSet(self, Output_index, Signal_1, Operation, Signal_2):
+    def UserOut_CalcSignalConfigSet(self, Output_index, Operation_1, Value_1, Operation_2, Value_2, Operation_3, Value_3, Operation_4, Value_4):
         """
         UserOut.CalcSignalConfigSet
         Sets the configuration of the Calculated Signal for the selected output channel.
-        The configuration is a math operation between 2 signals, or the logarithmic value of one signal.
-        The possible values for the math operation are: 
-        0_None, 1_Add, 1_Subtract, 3_Multiply, 4_Divide, 6_Log
-        
+        The configuration is a combination of 4 parts that creates a formula. Each part of the formula is a parameter/math 
+        operation and a value (which depending on the parameter/math operation is applicable or not).
+        The possible values for the parameter/math operation of part 1 are: 
+        0=None, 5=Constant, 10=Signal Index
+        The possible values for the parameter/math operation of parts 2, 3 and 4 are: 
+        0=None, 1=Add Constant, 1=Subtract Constant, 3=Multiply Constant, 4=Divide Constant, 6=Add Signal, 
+        7=Subtract Signal, 8=Multiply Signal, 9=Divide Signal, 11=Exponent, 12=Absolute, 13= Negate, 14= Log 
+        There is no mathematical operator precedence in operation here; the equations are executed in a strict left-to-right 
+        (part 1 to part 4) fashion. 
+        This is equivalent to defining the calculations as ((((Part 1) Part 2) Part 3) Part 4).
+        For example:
+        The average of Input 1 and Input 2 is defined as “Input 1 + Input 2 / 2”.
+        The sum of Input 1 plus half of Input 2 is defined as “Input 2 / 2 + Input 1”.
+        The reciprocal of Input 1 is defined as “1 / Input 1”.
         Arguments: 
-        -- Output index (int) sets the output to be used, where index could be any value from 1 to the number of available outputs
-        -- Signal 1 (unsigned int16) is the signal index (from 0 to 127) used as the first signal of the formula. 
-        -- Operation (unsigned int16) is the math operation. 
-        -- Signal 2 (unsigned int16) is the signal index (from 0 to 127) used as the second signal of the formula.
+        - Output index (int) sets the output to be used, where index could be any value from 1 to the number of 
+        available outputs
+        - Operation 1 (unsigned int16) is the parameter or math operation selected as the 1st part of the configuration 
+        formula. 
+        - Value 1 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 2 (unsigned int16) is the parameter or math operation selected as the 2nd part of the 
+        configuration formula. 
+        - Value 2 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 3 (unsigned int16) is the parameter or math operation selected as the 3rd part of the 
+        configuration formula. 
+        - Value 3 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 4 (unsigned int16) is the parameter or math operation selected as the 4th part of the 
+        configuration formula. 
+        - Value 4 (float32) is a constant value or signal index, depending on the precedent operation
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
@@ -2480,25 +3073,45 @@ class Nanonis:
         -- 
         
         """
-        return self.quickSend("UserOut.CalcSignalConfigSet", [Output_index, Signal_1, Operation, Signal_2],
-                              ["i", "H", "H", "H"], [])
+        return self.quickSend("UserOut.CalcSignalConfigSet", [Output_index, Operation_1, Value_1, Operation_2, Value_2, Operation_3, Value_3, Operation_4, Value_4],
+                              ["i", "H", "f", "H", "f", "H", "f", "H", "f"], [])
 
     def UserOut_CalcSignalConfigGet(self, Output_index):
         """
         UserOut.CalcSignalConfigGet
         Returns the configuration of the Calculated Signal for the selected output channel.
-        The configuration is a math operation between 2 signals, or the logarithmic value of one signal.
-        The possible values for the math operation are: 
-        0_None, 1_Add, 1_Subtract, 3_Multiply, 4_Divide, 6_Log
+        The configuration is a combination of 4 parts that creates a formula. Each part of the formula is a parameter/math 
+        operation and a value (which depending on the parameter/math operation is applicable or not).
+        The possible values for the parameter/math operation of part 1 are: 
+        0=None, 5=Constant, 10=Signal Index
+        The possible values for the parameter/math operation of parts 2, 3 and 4 are: 
+        0=None, 1=Add Constant, 1=Subtract Constant, 3=Multiply Constant, 4=Divide Constant, 6=Add Signal, 
+        7=Subtract Signal, 8=Multiply Signal, 9=Divide Signal, 11=Exponent, 12=Absolute, 13= Negate, 14= Log 
+        There is no mathematical operator precedence in operation here; the equations are executed in a strict left-to-right 
+        (part 1 to part 4) fashion. 
+        This is equivalent to defining the calculations as ((((Part 1) Part 2) Part 3) Part 4).
+        For example:
+        The average of Input 1 and Input 2 is defined as “Input 1 + Input 2 / 2”.
+        The sum of Input 1 plus half of Input 2 is defined as “Input 2 / 2 + Input 1”.
+        The reciprocal of Input 1 is defined as “1 / Input 1”.
         
         Arguments: 
         -- Output index (int) sets the output to be used, where index could be any value from 1 to the number of available outputs
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
-        -- Signal 1 (unsigned int16) is the signal index (from 0 to 127) used as the first signal of the formula. 
-        -- Operation (unsigned int16) is the math operation. 
-        -- Signal 2 (unsigned int16) is the signal index (from 0 to 127) used as the second signal of the formula.
+        - Operation 1 (unsigned int16) is the parameter or math operation selected as the 1st part of the configuration 
+        formula. 
+        - Value 1 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 2 (unsigned int16) is the parameter or math operation selected as the 2nd part of the 
+        configuration formula. 
+        - Value 2 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 3 (unsigned int16) is the parameter or math operation selected as the 3rd part of the 
+        configuration formula. 
+        - Value 3 (float32) is a constant value or signal index, depending on the precedent operation
+        - Operation 4 (unsigned int16) is the parameter or math operation selected as the 4th part of the 
+        configuration formula. 
+        - Value 4 (float32) is a constant value or signal index, depending on the precedent operation
         -- Error described in the Response message&gt;Body section
         
         
@@ -2506,7 +3119,7 @@ class Nanonis:
         
         
         """
-        return self.quickSend("UserOut.CalcSignalConfigGet", [Output_index], ["i"], ["H", "H", "H"])
+        return self.quickSend("UserOut.CalcSignalConfigGet", [Output_index], ["i"], ["H", "f", "H", "f", "H", "f", "H", "f"])
 
     def UserOut_LimitsSet(self, Output_index, Upper_limit, Lower_limit):
         """
