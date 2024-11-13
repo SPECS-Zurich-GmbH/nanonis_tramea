@@ -2001,12 +2001,26 @@ class Nanonis:
         """
         return self.quickSend("LockInFreqSwp.PropsGet", [], [], ["H", "H", "f", "H", "f", "I", "I", "i", "*-c"])
 
+    def Script_Open(self):
+    """
+    Script.Open
+    Opens the Script module.
+    Arguments: None
+    
+    Return arguments (if Send response back flag is set to True when sending request message):
+    - Error described in the Response message>Body section
+    
+    
+    """
+        return self.quickSend("Script.Open", [], [], [])
 
-    def Script_Load(self, Script_file_path, Load_session):
+    def Script_Load(self, Script_index, Script_file_path, Load_session):
         """
         Script.Load
         Loads a script in the script module.
         Arguments:
+        -- Script index (int) sets the slot where the script will be loaded and covers a range from 1 (first script) to the 
+            total number of scripts. A value of -1 sets the currently selected script slot.
         -- Script file path size (int) is the number of characters of the script file path string
         -- Script file path (string) is the path of the script file to load
         -- Load session (unsigned int32) automatically loads the scripts from the session file bypassing the script file path argument, where 0_False and 1_True  
@@ -2017,14 +2031,16 @@ class Nanonis:
         
         
         """
-        return self.quickSend("Script.Load", [Script_file_path, Load_session], ["+*c", "I"],
+        return self.quickSend("Script.Load", [Script_index, Script_file_path, Load_session], ["i","+*c", "I"],
                               [])
 
-    def Script_Save(self, Script_file_path, Save_session):
+    def Script_Save(self, Script_index, Script_file_path, Save_session):
         """
         Script.Save
         Saves the current script in the specified .ini file.
         Arguments:
+        -- Script index (int) sets the slot where the script will be loaded and covers a range from 1 (first script) to the 
+            total number of scripts. A value of -1 sets the currently selected script slot.
         -- Script file path size (int) is the number of characters of the script file path string
         -- Script file path (string) is the path of the script file to save
         -- Save session (unsigned int32) automatically saves the current script into the session file bypassing the script file path argument, where 0_False and 1_True  
@@ -2035,7 +2051,7 @@ class Nanonis:
         
         
         """
-        return self.quickSend("Script.Save", [Script_file_path, Save_session], ["+*c", "I"],
+        return self.quickSend("Script.Save", [Script_index, Script_file_path, Save_session], ["i","+*c", "I"],
                               [])
 
     def Script_Deploy(self, Script_index):
@@ -2043,7 +2059,7 @@ class Nanonis:
         Script.Deploy
         Deploys a script in the script module.
         Arguments: 
-        -- Script index (int) sets the script to deploy and covers a range from 0 (first script) to the total number of scripts minus one. A value of -1 sets the currently selected script to deploy.
+        -- Script index (int) sets the script to deploy and covers a range from 1 (first script) to the total number of scripts. A value of -1 sets the currently selected script to deploy.
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
@@ -2057,7 +2073,7 @@ class Nanonis:
         Script.Undeploy
         Undeploys a script in the script module.
         Arguments: 
-        -- Script index (int) sets the script to undeploy and covers a range from 0 (first script) to the total number of scripts minus one. A value of -1 sets the currently selected script to undeploy.
+        -- Script index (int) sets the script to undeploy and covers a range from 1 (first script) to the total number of scripts. A value of -1 sets the currently selected script to undeploy.
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
@@ -2071,7 +2087,7 @@ class Nanonis:
         Script.Run
         Runs a script in the script module.
         Arguments: 
-        -- Script index (int) sets the script to run and covers a range from 0 (first script) to the total number of scripts minus one. A value of -1 sets the currently selected script to run.
+        -- Script index (int) sets the script to run and covers a range from 1 (first script) to the total number of scripts. A value of -1 sets the currently selected script to run.
         -- Wait until script finishes (unsigned int32), where 0_False and 1_True 
         
         Return arguments (if Send response back flag is set to True when sending request message):
@@ -2149,7 +2165,7 @@ class Nanonis:
         """
         return self.quickSend("Script.DataGet", [Acquire_buffer, Sweep_number], ["H", "i"], ["i", "i", "2f"])
 
-    def Script_Autosave(self, Acquire_buffer, Sweep_number, All_sweeps_to_same_file):
+    def Script_Autosave(self, Acquire_buffer, Sweep_number, All_sweeps_to_same_file, Folder_path, Basename):
         """
         Script.Autosave
         Saves automatically to file the data stored in the Acquire Buffers after running a script in the Script module.
@@ -2160,15 +2176,92 @@ class Nanonis:
         Each sweep is configured as such in the script and it corresponds to each plot displayed in the graphs of the Script module. 
         The sweep numbers start at 0. A value of -1 saves all acquired sweeps.
         -- All sweeps to same file (unsigned int32) decides if all sweeps defined by the Sweep number parameter are saved to the same file (_1) or not (_0).
-        
+        - Folder path path size (int) is the number of characters of the folder path string
+        - Folder path (string) is the folder where the file will be saved. If nothing is sent, the saving routine uses the 
+            last used path.
+        - Basename path size (int) is the number of characters of the basename string
+        - Basename (string) is the basename of the file to save. If nothing is sent, the saving routine uses the last 
+            used basename.
+
         Return arguments (if Send response back flag is set to True when sending request message):
         
         -- Error described in the Response message&gt;Body section
         
         Interferometer
         """
-        return self.quickSend("Script.Autosave", [Acquire_buffer, Sweep_number, All_sweeps_to_same_file],
-                              ["H", "i", "I"], [])
+        return self.quickSend("Script.Autosave", [Acquire_buffer, Sweep_number, All_sweeps_to_same_file, Folder_path, Basename],
+                              ["H", "i", "I", "+*c", "+*c"], [])
+
+    def Script_LUTOpen(self):
+    """
+    Script.LUTOpen
+    Opens the LUT (Look Up Table) Editor from the Script module.
+    Arguments: None
+    
+    Return arguments (if Send response back flag is set to True when sending request message):
+    - Error described in the Response message>Body section
+    
+    
+    """
+        return self.quickSend("Script.LUTOpen", [], [], [])
+
+    def Script_LUTLoad(self, Script_index, Script_file_path, LUT_Values):
+        """
+        Script.LUTLoad
+        Loads a LUT from file or directly by setting an array of values into the LUT Editor in the script module.
+        Arguments: 
+        - LUT index (int) sets the LUT to load and covers a range from 1 (first LUT) to the total number of LUTs
+        - File path size (int) is the number of characters of the File path string
+        - File path (string) is the path of the file containing a list of values to load into the selected LUT. The 
+            extension of the file must be .luts. If nothing is sent, it will use the values sent by the LUT values argument.
+        - LUT values size (int) is the size of the LUT values array
+        - LUT values (1D array float32)
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        
+        """
+        return self.quickSend("Script.LUTLoad", [Script_index, Script_file_path, LUT_Values], ["i","+*c", "*f"],
+                              [])
+
+    def Script_LUTSave(self, Script_index, Script_file_path):
+        """
+        Script.LUTSave
+        Saves a LUT to file.
+        Arguments: 
+        - LUT index (int) sets the LUT to save and covers a range from 1 (first LUT) to the total number of LUTs
+        - File path size (int) is the number of characters of the File path string
+        - File path (string) is the path of the file where the selected LUT will be saved. The extension of the file 
+            must be .luts
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        
+        """
+        return self.quickSend("Script.LUTSave", [Script_index, Script_file_path], ["i","+*c"],
+                              [])
+
+    def Script_LUTDeploy(self, Script_index, Wait_until_finished, Timeout_ms):
+        """
+        Script.LUTDeploy
+        Deploys a LUT from the LUT Editor in the script module.
+        Arguments: 
+        - LUT index (int) sets the LUT to deploy and covers a range from 1 (first LUT) to the total number of LUTs
+        - Wait until finished (unsigned int32) decides if the function waits until the LUT is fully deployed, as it 
+            might take some time.
+        - Timeout (ms) (int) sets the number of milliseconds to wait until the LUT is fully deployed. -1 waits 
+            forever.
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("Script.LUTDeploy", [Script_index, Wait_until_finished, Timeout_ms], ["i", "I", "i"], [])
 
     def HSSwp_AcqChsSet(self, Channel_Indexes:list):
         """
