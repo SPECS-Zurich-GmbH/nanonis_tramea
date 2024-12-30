@@ -44,7 +44,10 @@ The TCP Interface requires every argument to be of certain size (see documentati
 This is why the Numpy dependency is required, since it enables the specification
 of variable sizes. 
 
+## Change Log
 
+### 1.0.3
+Added the function Util.VersionGet to get the software version, the MCVA5 preamplifier functions, and the V5e Generic PI Controller functions.
 
 
 
