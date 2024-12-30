@@ -427,7 +427,7 @@ class Nanonis:
 
     - Series name size (int) is the size (number of characters) of the series name string
     - Series name (string) is the base name used for the saved sweeps. If empty string, there is no change
-    - Create Date&Time Folder (int) defines if this feature is active, where -1=no change, 0=Off, 1=On.
+    - Create Date&Time Folder (int) defines if this feature is active, where 0=no change, 1=On, 2=Off.
     If On, it creates a subfolder within the Session folder whose name is a combination of the basename and
     current date&time of the sweep, every time a sweep finishes.
     - Comment size (int) is the size (number of characters) of the comment string
@@ -470,16 +470,17 @@ class Nanonis:
         """
         return self.quickSend("3DSwp.SaveOptionsGet", [], [], ["i", "*-c", "I", "i", "i", "*+c", "i", "*-c", "i", "i", "*-c"])
 
-    def ThreeDSwp_Start(self):
+    def ThreeDSwp_Start(self, Wait_until_finished):
         """
     Starts a sweep in the 3D Sweeper module.
     When Send response back is set to True, it returns immediately afterwards.
-    Arguments: None
+    Arguments: 
+    -	Wait until finished (unsigned int32) determines if the function returns immediately after starting a sweep (=0), or if the function waist until the sweep finishes (=1)
     Return arguments (if Send response back flag is set to True when sending request message):
     - Error described in the Response message>Body section
 
         """
-        return self.quickSend("3DSwp.Start", [], [], [])
+        return self.quickSend("3DSwp.Start", [Wait_until_finished], ["I"], [])
 
     def ThreeDSwp_Stop(self):
         """
@@ -579,13 +580,11 @@ class Nanonis:
 
     - Number of points (int) sets the number of points of the sweep. 0 points means no change
     - Number of sweeps (int) sets the total number of sweeps. 0 sweeps means no change
-    - Backward sweep (int) defines if the backward sweep is active, where -1=no change, 0=Off, 1=On
-    - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where -1=no change,
-    0=no action, 1=reset signal to the original value, 2=go to arbitrary value
+    - Backward sweep (int) defines if the backward sweep is active, where 0=no change, 1=On, 2=Off
+    - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where 0=no change, 1=no action, 2=reset signal to the original value, 3=go to arbitrary value
     - End of sweep arbitrary value (float32) sets the arbitrary value to go at the end of the sweep if Go to
     arbitrary value is configured
-    - Save all (int) defines if all the configured sweeps are saved or only the averaged sweep, where -1=no
-    change, 0=Off, 1=On
+    - Save all (int) defines if all the configured sweeps are saved or only the averaged sweep, where 0=no change, 1=On, 2=Off
 
     Return arguments (if Send response back flag is set to True when sending request message):
 
@@ -797,9 +796,8 @@ class Nanonis:
         Arguments:
 
         - Number of points (int) sets the number of points of the sweep. 0 points means no change
-        - Backward sweep (int) defines if the backward sweep is active, where -1=no change, 0=Off, 1=On
-        - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where -1=no change,
-        0=no action, 1=reset signal to the original value, 2=go to arbitrary value
+        - Backward sweep (int) defines if the backward sweep is active, where 0=no change, 1=On, 2=Off
+        - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where 0=no change, 1=no action, 2=reset signal to the original value, 3=go to arbitrary value
         - End of sweep arbitrary value (float32) sets the arbitrary value to go at the end of the sweep if Go to
         arbitrary value is configured
 
@@ -940,9 +938,8 @@ class Nanonis:
         Arguments:
 
         - Number of points (int) sets the number of points of the sweep. 0 points means no change
-        - Backward sweep (int) defines if the backward sweep is active, where -1=no change, 0=Off, 1=On
-        - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where -1=no change,
-        0=no action, 1=reset signal to the original value, 2=go to arbitrary value
+        - Backward sweep (int) defines if the backward sweep is active, where 0=no change, 1=On, 2=Off
+        - End of sweep action (int) defines the behavior of the signal at the end of the sweep, where 0=no change, 1=no action, 2=reset signal to the original value, 3=go to arbitrary value
         - End of sweep arbitrary value (float32) sets the arbitrary value to go at the end of the sweep if Go to
         arbitrary value is configured
 
@@ -1200,11 +1197,13 @@ class Nanonis:
         
         -- Number of channels (int) is the number of recorded channels. It defines the size of the Channel indexes array
         -- Channel indexes (1D array int) are the indexes of the recorded channels. The indexes correspond to the list of Measurement in the Nanonis software.
-        To get the Measurements  names use the <i>Signals.MeasNamesGet </i>function
+        -	Channels names size (int) is the size in bytes of the Channels names string array
+        -	Number of channels (int) is the number of elements of the Channels names string array
+        -	Channels names (1D array string) returns the list of recorded channels names. The size of each string item comes right before it as integer 32
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("1DSwp.AcqChsGet", [], [], ["i", "*i"])
+        return self.quickSend("1DSwp.AcqChsGet", [], [], ["i", "*i", "i", "i", "*+c"])
 
     def OneDSwp_SwpSignalSet(self, SweepChannelName):
         """
@@ -1225,21 +1224,31 @@ class Nanonis:
     def OneDSwp_SwpSignalGet(self):
         """
         1DSwp.SwpSignalGet
-        Returns the selected Sweep signal in the 1D Sweeper.
-
+        Returns the selected Sweep signal in the Generic Sweeper.
         Arguments: None
-
         Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Sweep channel name size (int) is the number of characters of the sweep channel name string
+        -- Sweep channel name (string) is the name of the signal selected for the sweep channel
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("1DSwp.SwpSignalGet", [], [], ["i", "*-c"])
 
-        - Sweep channel name size (int) is the number of characters of the sweep channel name string
-        - Sweep channel name (string) is the name of the signal selected for the sweep channel
-        - Channels names size (int) is the size in bytes of the Channels names string array
-        - Number of channels (int) is the number of elements of the Channels names string array
-        - Channels names (1D array string) returns the list of channels names. The size of each string item comes right before it as integer 32
-        - Error described in the Response message>Body section
+    def OneDSwp_SwpSignalListGet(self):
+        """
+        1DSwp.SwpSignalListGet
+        Returns the list of names of available signals to sweep in the Generic Sweeper.
+        Arguments: None
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -	Channels names size (int) is the size in bytes of the Channels names string array
+        -	Number of channels (int) is the number of elements of the Channels names string array
+        -	Channels names (1D array string) returns the list of channels names. The size of each string item comes right before it as integer 32
+        -	Error described in the Response message>Body section
 
         """
-        return self.quickSend("1DSwp.SwpSignalGet", [], [], ["i", "*-c", "i", "i", "*+c"])
+        return self.quickSend("1DSwp.SwpSignalListGet", [], [], ["i", "i", "*+c"])
 
     def OneDSwp_LimitsSet(self, LowerLimit, UpperLimit):
         """
@@ -1283,8 +1292,8 @@ class Nanonis:
         -- Maximum slew rate (units/s) (float32) 
         -- Number of steps (int) defines the number of steps of the sweep. 0 points means no change
         -- Period (ms) (unsigned int16) where 0 means no change
-        -- Autosave (int) defines if the sweep is automatically saved, where -1_no change, 0_Off, 1_On
-        -- Save dialog box (int) defines if the save dialog box shows up or not, where -1_no change, 0_Off, 1_On
+        -- Autosave (int) defines if the sweep is automatically saved, where 0=no change, 1=On, 2=Off
+        -- Save dialog box (int) defines if the save dialog box shows up or not, where 0=no change, 1=On, 2=Off
         -- Settling time (ms) (float32) 
         
         Return arguments (if Send response back flag is set to True when sending request message):
@@ -1376,6 +1385,41 @@ class Nanonis:
         - Error described in the Response message>Body section
         """
         return self.quickSend("1DSwp.Open", [], [], [])
+
+    def OneDSwp_ModeSet(self, Sweep_Mode):
+        """
+        1DSwp.ModeSet
+        Sets the sweep mode in the 1D Sweeper, which defines how the sweeper should react to each new data point set during the sweep.
+........Timed: Waits the amount of time set by the user (Settling Time) after setting a new sweep value using the Slew rate specified on the UI of the Sweeper.  Does not explicitly wait for the target device to reach the value set.
+........Value Reached: Waits for feedback from the target device that the value set has actually been reached before starting integration.  Does not require a Sweeper Slew Rate setting.
+........Continuous: After moving to start value, final value is set in one step and the measurement is performed continuously until the target has reached the specified value.
+
+        Arguments:
+        - Sweep mode (unsigned int16) where 0=Timed, 1=Value Reached, and 2=Continuous
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+
+        - Error described in the Response message>Body section
+
+        """
+        return self.quickSend("1DSwp.ModeSet", [Sweep_Mode], ["H"], [])
+
+    def OneDSwp_ModeGet(self):
+        """
+        1DSwp.ModeGet
+        Returns the sweep mode in the 1D Sweeper, which defines how the sweeper should react to each new data point set during the sweep.
+........Timed: Waits the amount of time set by the user (Settling Time) after setting a new sweep value using the Slew rate specified on the UI of the Sweeper.  Does not explicitly wait for the target device to reach the value set.
+........Value Reached: Waits for feedback from the target device that the value set has actually been reached before starting integration.  Does not require a Sweeper Slew Rate setting.
+........Continuous: After moving to start value, final value is set in one step and the measurement is performed continuously until the target has reached the specified value.
+
+        Arguments: None
+
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Sweep mode (unsigned int16) where 0=Timed, 1=Value Reached, and 2=Continuous
+        - Error described in the Response message>Body section
+        
+        """
+        return self.quickSend("1DSwp.ModeGet", [], [], ["H"])
 
     def LockIn_ModOnOffSet(self, Modulator_number, Lock_In_OndivOff):
         """
@@ -2449,7 +2493,7 @@ class Nanonis:
         """
         return self.quickSend("HSSwp.ResetSignalsGet", [], [], ["i"])
 
-    def HSSwp_SaveBasenameSet(self, Basename):
+    def HSSwp_SaveBasenameSet(self, Basename, Path):
         """
         HSSwp.SaveBasenameSet
         Sets the save basename in the High-Speed Sweeper.
@@ -2458,12 +2502,15 @@ class Nanonis:
 
         - Basename size (int) is the size (number of characters) of the basename string
         - Basename (string) is the base name used for the saved sweeps
+        - Path size (int) is the size (number of characters) of the path string
+        - Path (string) is the path used for the saved sweeps
+
 
         Return arguments (if Send response back flag is set to True when sending request message to the server):
 
         - Error described in the Response message>Body section
         """
-        return self.quickSend("HSSwp.SaveBasenameSet", [Basename], ["+*c"], [])
+        return self.quickSend("HSSwp.SaveBasenameSet", [Basename, Path], ["+*c", "+*c"], [])
 
     def HSSwp_SaveBasenameGet(self):
         """
@@ -2477,10 +2524,12 @@ class Nanonis:
 
         - Basename size (int) is the size (number of characters) of the basename string
         - Basename (string) is the base name used for the saved sweeps
+        - Path size (int) is the size (number of characters) of the path string
+        - Path (string) is the path used for the saved sweeps
         - Error described in the Response message>Body section
 
         """
-        return self.quickSend("HSSwp.SaveBasenameGet", [], [], ["i", "*-c"])
+        return self.quickSend("HSSwp.SaveBasenameGet", [], [], ["i", "*-c", "*-c"])
 
     def HSSwp_SaveDataSet(self, SaveData):
         """
@@ -3214,7 +3263,7 @@ class Nanonis:
         """
         return self.quickSend("UserOut.CalcSignalConfigGet", [Output_index], ["i"], ["H", "f", "H", "f", "H", "f", "H", "f"])
 
-    def UserOut_LimitsSet(self, Output_index, Upper_limit, Lower_limit):
+    def UserOut_LimitsSet(self, Output_index, Upper_limit, Lower_limit, Raw_limits):
         """
         UserOut.LimitsSet
         Sets the physical limits (in calibrated units) of the selected output channel.
@@ -3222,20 +3271,22 @@ class Nanonis:
         -- Output index (int) sets the output to be used, where index could be any value from 1 to the number of available outputs
         -- Upper limit (float32) defines the upper physical limit of the user output
         -- Lower limit (float32) defines the lower physical limit of the user output
+        -- Raw limits? (unsigned int32) selects whether to set the physical limits (0) or the raw limits (1)
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("UserOut.LimitsSet", [Output_index, Upper_limit, Lower_limit], ["i", "f", "f"], [])
+        return self.quickSend("UserOut.LimitsSet", [Output_index, Upper_limit, Lower_limit, Raw_limits], ["i", "f", "f", "I"], [])
 
-    def UserOut_LimitsGet(self, Output_index):
+    def UserOut_LimitsGet(self, Output_index, Raw_limits):
         """
         UserOut.LimitsGet
         Returns the physical limits (in calibrated units) of the selected output channel.
         Arguments: 
         -- Output index (int) sets the output to be used, where index could be any value from 1 to the number of available outputs
+        -- Raw limits? (unsigned int32) selects whether to set the physical limits (0) or the raw limits (1)
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
@@ -3249,7 +3300,7 @@ class Nanonis:
         
         Digital Lines
         """
-        return self.quickSend("UserOut.LimitsGet", [Output_index], ["i"], ["f", "f"])
+        return self.quickSend("UserOut.LimitsGet", [Output_index, Raw_limits], ["i", "I"], ["f", "f"])
 
     def UserOut_SlewRateSet(self, Output_Index, Slew_Rate):
         """
@@ -3283,7 +3334,8 @@ class Nanonis:
         Configures the properties of a digital line.
         Arguments: 
         -- Digital line (unsigned int32) defines the line to configure, from 1 to 8
-        -- Port (unsigned int32) selects the digital port, where 0_Port A, 1_Port B, 2_Port C, 3_Port D 
+        -- Port (unsigned int32) selects the digital port, where 0=Port A, 1=Port B, 2=Port C, 3=Port D, 4=Expanded Port 0, 5=Expanded Port 1, 6=Expanded Port 2, etc
+        The expanded DIO ports are available on selected systems through a dedicated DIO card.
         -- Direction (unsigned int32) is the direction of the selected digital line, where 0_Input, 1_Output
         -- Polarity (unsigned int32), where 0_Low active, 1_High active
         
@@ -3299,7 +3351,8 @@ class Nanonis:
         DigLines.OutStatusSet
         Sets the status of a digital output line.
         Arguments: 
-        -- Port (unsigned int32) selects the digital port, where 0_Port A, 1_Port B, 2_Port C, 3_Port D
+        -- Port (unsigned int32) selects the digital port, where 0=Port A, 1=Port B, 2=Port C, 3=Port D, 4=Expanded Port 0, 5=Expanded Port 1, 6=Expanded Port 2, etc
+        The expanded DIO ports are available on selected systems through a dedicated DIO card.
         -- Digital line (unsigned int32) defines the output line to configure, from 1 to 8
         -- Status (unsigned int32) sets whether the output is active or inactive, where 0_Inactive, 1_Active
         
@@ -3315,7 +3368,8 @@ class Nanonis:
         DigLines.TTLValGet
         Reads the actual TTL voltages present at the pins of the selected port.
         Arguments: 
-        -- Port (unsigned int16) selects the digital port, where 0_Port A, 1_Port B, 2_Port C, 3_Port D
+        -- Port (unsigned int16) selects the digital port, where 0=Port A, 1=Port B, 2=Port C, 3=Port D, 4=Expanded Port 0, 5=Expanded Port 1, 6=Expanded Port 2, etc
+        The expanded DIO ports are available on selected systems through a dedicated DIO card.
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
@@ -3333,7 +3387,8 @@ class Nanonis:
         DigLines.Pulse
         Configures and starts the pulse generator on the selected digital outputs.
         Arguments: 
-        -- Port (unsigned int16) selects the digital port, where 0_Port A, 1_Port B, 2_Port C, 3_Port D
+        -- Port (unsigned int16) selects the digital port, where 0=Port A, 1=Port B, 2=Port C, 3=Port D, 4=Expanded Port 0, 5=Expanded Port 1, 6=Expanded Port 2, etc
+        The expanded DIO ports are available on selected systems through a dedicated DIO card.
         -- Digital lines size (int) is the size of the Digital lines array
         -- Digital lines (1D array unsigned int8) defines the output lines to pulse, from 1 to 8
         -- Pulse width (s) (float32) defines how long the outputs are active
@@ -4351,3 +4406,378 @@ class Nanonis:
         """
 
         return self.quickSend("Util.Quit", [Use_Stored_Values, Settings_Name, Layout_Name, Save_Signals], ["I", "+*c", "+*c", "I"], [])
+
+    def Util_VersionGet(self):
+        """
+        Returns the version information of the Nanonis software.
+        Arguments:
+        None
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Product Line size (int) is the number of characters of the Product Line string
+        - Product Line (string) returns “Nanonis SPM Control Software” or “Nanonis Tramea Software”.
+        - Version size (int) is the number of characters of the Version string
+        - Version (string) returns the software version (e.g. Generic 5)
+        - Host App. Release (unsigned int32) returns the host application release number.
+        - RT Engine release (unsigned int32) returns the RT Engine application release number.
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("Util.VersionGet", [], [], ["+*c", "+*c", "I", "I"])
+
+    def MCVA5_UserInSet(self, Preamp_Nr, Channel_Nr, User_Input):
+        """
+        MCVA5.UserInSet
+        Assigns a user input to one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        - User Input (unsigned int32) is the user input number that will be assigned to the selected channel of the selected preamplifier  
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.UserInSet", [Preamp_Nr, Channel_Nr], ["H", "H", "I"], [])
+
+    def MCVA5_UserInGet(self, Preamp_Nr, Channel_Nr):
+        """
+        MCVA5.UserInGet
+        Returns the user input assigned to the selected channel of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - User Input (unsigned int32) is the user input number that is currently assigned to the selected channel of the selected preamplifier  )
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.UserInGet", [Preamp_Nr, Channel_Nr], ["H", "H"], ["I"])
+
+    def MCVA5_GainSet(self, Preamp_Nr, Channel_Nr, Gain):
+        """
+        MCVA5.GainSet
+        Sets the gain of one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        - Gain (unsigned int16) is the gain that will be applied to the selected channel of the selected preamplifier, where 0=1, 1=10, 2=100, 3=1000  
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.GainSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+
+    def MCVA5_GainGet(self, Preamp_Nr, Channel_Nr):
+        """
+        MCVA5.GainGet
+        Returns the gain applied to one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Gain (unsigned int16) is the gain currently applied to the selected channel of the selected preamplifier, where 0=1, 1=10, 2=100, 3=1000    
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.GainGet", [Preamp_Nr, Channel_Nr], ["H", "H"], ["H"])
+
+    def MCVA5_InputModeSet(self, Preamp_Nr, Channel_Nr, Input_Mode):
+        """
+        MCVA5.InputModeSet
+        Sets the input mode of one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        - Input mode (unsigned int16) is the input mode that will be applied to the selected channel of the selected preamplifier, where 0=A-B, 1=A, 2=GND
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.InputModeSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+
+    def MCVA5_InputModeGet(self, Preamp_Nr, Channel_Nr):
+        """
+        MCVA5.InputModeGet
+        Returns the input mode applied to one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Input mode (unsigned int16) is the input mode currently applied to the selected channel of the selected preamplifier, where 0=A-B, 1=A, 2=GND
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.InputModeGet", [Preamp_Nr, Channel_Nr], ["H", "H"], ["H"])
+
+
+    def MCVA5_CouplingSet(self, Preamp_Nr, Channel_Nr, Coupling):
+        """
+        MCVA5.CouplingSet
+        Sets the coupling mode of one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        - Coupling (unsigned int16) is the coupling mode that will be applied to the selected channel of the selected preamplifier, where 0=DC and 1=AC
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.CouplingSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+
+    def MCVA5_CouplingGet(self, Preamp_Nr, Channel_Nr):
+        """
+        MCVA5.CouplingGet
+        Returns the coupling mode of one of the four channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Channel Nr. (unsigned int16) is the channel number out of the four available channels in the MCVA5 preamplifier, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Coupling (unsigned int16) is the coupling mode that applied to the selected channel of the selected preamplifier, where 0=DC and 1=AC
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.CouplingGet", [Preamp_Nr, Channel_Nr], ["H", "H"], ["H"])
+
+    def MCVA5_SingleStateUpdate(self, Preamp_Nr):
+        """
+        MCVA5.SingleStateUpdate
+        Reads once the state of the selected preamplifier and returns the Ready and Overload states of all channels.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Channel 1 Ready (unsigned int32) where 0=no ready, 1=ready
+        - Channel 1 Overload (unsigned int32) where 0=not overload, 1=overload
+        - Channel 2 Ready (unsigned int32) where 0=no ready, 1=ready
+        - Channel 2 Overload (unsigned int32) where 0=not overload, 1=overload
+        - Channel 3 Ready (unsigned int32) where 0=no ready, 1=ready
+        - Channel 3 Overload (unsigned int32) where 0=not overload, 1=overload
+        - Channel 4 Ready (unsigned int32) where 0=no ready, 1=ready
+        - Channel 4 Overload (unsigned int32) where 0=not overload, 1=overload
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.SingleStateUpdate", [Preamp_Nr], ["H"], ["i", "i", "i", "i", "i", "i", "i", "i"])
+
+    def MCVA5_ContStateUpdateSet(self, Preamp_Nr, Continuous_Read):
+        """
+        MCVA5.ContStateUpdateSet
+        Configures the selected preamplifier to read continuously the state of all channels.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Continuous Read (unsigned int32) where 0=false, 1=true
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.ContStateUpdateSet", [Preamp_Nr, Continuous_Read], ["H", "I"], [])
+
+    def MCVA5_ContStateUpdateGet(self, Preamp_Nr):
+        """
+        MCVA5.ContStateUpdateGet
+        Returns if the selected preamplifier is configured to read continuously the state of all channels.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Continuous Read (unsigned int32) where 0=false, 1=true
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.ContStateUpdateGet", [Preamp_Nr, Channel_Nr], ["H"], ["I"])
+
+    def MCVA5_SingleTempUpdate(self, Preamp_Nr):
+        """
+        MCVA5.SingleTempUpdate
+        Reads once the temperatures of all channels of the selected preamplifier.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Channel 1 (unsigned int16) is the temperature in °C of Channel 1
+        - Channel 2 (unsigned int16) is the temperature in °C of Channel 2
+        - Channel 3 (unsigned int16) is the temperature in °C of Channel 3
+        - Channel 4 (unsigned int16) is the temperature in °C of Channel 4
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.SingleTempUpdate", [Preamp_Nr], ["H"], ["H", "H", "H", "H"])
+
+    def MCVA5_ContTempUpdateSet(self, Preamp_Nr, Continuous_Read):
+        """
+        MCVA5.ContTempUpdateSet
+        Configures the selected preamplifier to read continuously the temperature of all channels.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        - Continuous Read (unsigned int32) where 0=false, 1=true
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("MCVA5.ContTempUpdateSet", [Preamp_Nr, Continuous_Read], ["H", "I"], [])
+
+    def MCVA5_ContTempUpdateGet(self, Preamp_Nr):
+        """
+        MCVA5.ContTempUpdateGet
+        Returns if the selected preamplifier is configured to read continuously the temperature of all channels.
+        Arguments:
+        - Preamplifier Nr. (unsigned int16) is the preamplifier module number, where valid values are 1, 2, 3, 4
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Continuous Read (unsigned int32) where 0=false, 1=true
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("MCVA5.ContTempUpdateGet", [Preamp_Nr, Channel_Nr], ["H"], ["I"])
+
+    def PICtrl_OnOffSet(self, Controller_Index, Controller_Status):
+        """
+        PICtrl.OnOffSet
+        Switches the Generic PI Controller On or Off.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        - Controller status (unsigned int32) switches the controller Off (=0) or On (=1)
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("PICtrl.OnOffSet", [Controller_Index, Controller_Status], ["i", "I"], [])
+
+    def PICtrl_OnOffGet(self, Controller_Index):
+        """
+        PICtrl.OnOffGet
+        Returns the status of the Generic PI Controller.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Controller status (unsigned int32) indicates if the controller is Off (=0) or On (=1)
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("PICtrl.OnOffGet", [Controller_Index], ["i"], ["I"])
+
+    def PICtrl_CtrlChSet(self, Controller_Index, CtrlSignal_Index):
+        """
+        PICtrl.CtrlChSet
+        Sets the index of the output controlled by the Generic PI controller.
+        Arguments:
+        - Controller index (int) is the index of the controller. Valid values are 1 to 8.
+        - Control signal index (int) sets the output index to be used.
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("PICtrl.CtrlChSet", [Controller_Index, CtrlSignal_Index], ["i", "i"], [])
+
+    def PICtrl_CtrlChGet(self, Controller_Index):
+        """
+        PICtrl.CtrlChGet
+        Gets the index of the output controlled by the Generic PI controller.
+        Arguments:
+        - Controller index (int) is the index of the controller. Valid values are 1 to 8.
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Control signal index (int) returns the output index to be used.
+        - Control signals names size (int) is the size in bytes of the Control Signals Names array
+        - Number of Control signals names (int) is the number of elements of the Control Signals Names array
+        - Control signals names (1D array string) returns an array of Control Signals Names. Each element of the array is preceded by its size in bytes
+        - Number of Control signals indexes (int) is the number of elements of the Control Signals Indexes array
+        - Control signals indexes (1D array int) returns an array of Control Signals Indexes
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("PICtrl.CtrlChGet", [Controller_Index], ["i"], ["i", "i", "i", "*+c", "i", "*i"])
+
+    def PICtrl_InputChSet(self, Controller_Index, Input_Index):
+        """
+        PICtrl.InputChSet
+        Sets the index of the input channel in the Generic PI controller.
+        Arguments:
+        - Controller index (int) is the index of the controller. Valid values are 1 to 8.
+        - Input index (int) sets the input index to be used.
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("PICtrl.InputChSet", [Controller_Index, Input_Index], ["i", "i"], [])
+
+    def PICtrl_InputChGet(self, Controller_Index):
+        """
+        PICtrl.InputChGet
+        Gets the index of the input channel in the Generic PI controller.
+        Arguments:
+        - Controller index (int) is the index of the controller. Valid values are 1 to 8.
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Input index (int) returns the input index to be used.
+        - Input signals names size (int) is the size in bytes of the Input Signals Names array
+        - Number of Input signals names (int) is the number of elements of the Input Signals Names array
+        - Input signals names (1D array string) returns an array of Input Signals Names. Each element of the array is preceded by its size in bytes
+        - Number of Input signals indexes (int) is the number of elements of the Input Signals Indexes array
+        - Input signals indexes (1D array int) returns an array of Input Signals Indexes
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("PICtrl.InputChGet", [Controller_Index], ["i"], ["i", "i", "i", "*+c", "i", "*i"])
+
+    def PICtrl_PropsSet(self, Controller_Index, Setpoint, P_Gain, I_Gain, Slope):
+        """
+        PICtrl.PropsSet
+        Sets the properties of the Generic PI controller.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        - Setpoint (float32) 
+        - P gain (float32) 
+        - I gain (float32) 
+        - Slope (unsigned int16) where 0 means no change, 1 means Positive, and 2 means Negative
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("PICtrl.PropsSet", [Controller_Index, Setpoint, P_Gain, I_Gain, Slope], ["i", "f", "f", "f", "H"], [])
+
+    def PICtrl_PropsGet(self, Controller_Index):
+        """
+        PICtrl.PropsGet
+        Gets the properties of the Generic PI controller.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Setpoint (float32) 
+        - P gain (float32) 
+        - I gain (float32) 
+        - Slope (unsigned int16) where 0 means Positive, and 1 means Negative
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("PICtrl.PropsGet", [Controller_Index], ["i"], ["f", "f", "f", "H"])
+
+    def PICtrl_CtrlChPropsSet(self, Controller_Index, Lower_Limit, Upper_Limit):
+        """
+        PICtrl.CtrlChPropsSet
+        Sets the properties of the control signal in the Generic PI controller.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        - Lower_Limit (float32) 
+        - Upper_Limit (float32) 
+        
+        Return arguments (if Send response back flag is set to True when sending request message):
+        
+        -- Error described in the Response message&gt;Body section
+        
+        """
+        return self.quickSend("PICtrl.CtrlChPropsSet", [Controller_Index, Lower_Limit, Upper_Limit], ["i", "f", "f"], [])
+
+    def PICtrl_CtrlChPropsGet(self, Controller_Index):
+        """
+        PICtrl.CtrlChPropsGet
+        Gets the properties of the control signal in the Generic PI controller.
+        Arguments:
+        - Controller index (int32) is the index of the controller. Valid values are 1 to 8.
+        Return arguments (if Send response back flag is set to True when sending request message):
+        - Lower_Limit (float32) 
+        - Upper_Limit (float32) 
+        - Error described in the Response message>Body section
+        """
+        return self.quickSend("PICtrl.CtrlChPropsGet", [Controller_Index], ["i"], ["f", "f"])
+
