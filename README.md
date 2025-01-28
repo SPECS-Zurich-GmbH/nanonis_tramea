@@ -52,12 +52,9 @@ Added the function Util.VersionGet to get the software version, the MCVA5 preamp
 Fixed the indentation of two Script functions (Script.Open and Script.LUTOpen) which triggered an error when trying to use the class.
 Changed the behavior of the returnDebugInfo function so that nothing is printed out if there is no error.
 ### 1.0.5
-Fixed some missing variable names in the function declaration of some MCVA and MProbe functions.
-Fixed missing input arguments for Motor_FreqAmpGet and Motor_PosGet functions.
-Added all functions for the Function Generators 1Ch and 2Chs.
-Fixed the SpectrumAnlzr_DataGet function.
+Fixed some missing variable names in the function declaration of some MCVA functions.
 Removed a check in the ParseError function which set a different error string offset for functions returning exactly 8 bytes.
-Changed the data types of the returning arguments for the BiasSpectr_ChsGet and ZSpectr_ChsGet functions.
+
 
 
 
