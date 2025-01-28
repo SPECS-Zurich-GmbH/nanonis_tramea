@@ -249,10 +249,11 @@ class Nanonis:
         return decoded_nums
 
     def parseError(self, response, index):
-        if(index == 8):
-            margin = 4
-        else:
-            margin = 8
+        #if(index == 8):
+            #margin = 4
+        #else:
+            #margin = 8
+        margin = 8  #4 bytes (error status) + 4 bytes (error description size)
         errorIndex = index + margin
         jumpDistance = len(response) - errorIndex
         errorString = response[errorIndex:(errorIndex + jumpDistance)].decode()
@@ -302,26 +303,29 @@ class Nanonis:
                     universalLength = Variables[0]
                     if ResponseType[2] == 'c':
                         Result = self.decodeStringPrepended(Response, counter, universalLength)
-                        counter = counter + universalLength
+                        #counter = counter + universalLength 
+                        if len(Result)!=0:
+                            for item in Result:
+                                counter=counter+4+len(item)
                     else:
                         Result = self.decodeArray(Response, counter, universalLength, ResponseType[2])  # Nano
                         # print(ResponseType, ' : ', Result)
                         counter = counter + (universalLength * 4)
                     Variables.append(Result)
                 else:  # ResponseType[1] == 'w':
-                    Result = self.decodeArrayPrepended(Response, counter, Variables[-1], ResponseType[1])  # Nano
-                    if (ResponseType[1] == 'd'):
+                    Result = self.decodeArrayPrepended(Response, counter, Variables[-1], ResponseType[1])# Nano
+                    if (ResponseType[1]=='d'):
                         increment = 8
                     else:
                         increment = 4
-                    if (Variables[-1] != 0):  # here lies the problem
+                    if (Variables[-1] != 0): #here lies the problem
                         counter = counter + (Variables[-1] * increment)
-                    else:
-                        counter = counter + increment
+                    #else:
+                        #counter = counter + increment
                     Variables.append(Result)
                     # print(ResponseType, '  : ', Result)
-        ErrorString = self.parseError(Response, counter)  # Response[12:(12 + ErrorLength)].decode()
-        if (ErrorString != ''):
+        ErrorString = self.parseError(Response, counter)#Response[12:(12 + ErrorLength)].decode()
+        if(len(ErrorString) != 0):
             print('The following error appeared:', "\n", ErrorString)
             return [ErrorString, Response, Variables]
         else:
@@ -4439,7 +4443,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("MCVA5.UserInSet", [Preamp_Nr, Channel_Nr], ["H", "H", "I"], [])
+        return self.quickSend("MCVA5.UserInSet", [Preamp_Nr, Channel_Nr, User_Input], ["H", "H", "I"], [])
 
     def MCVA5_UserInGet(self, Preamp_Nr, Channel_Nr):
         """
@@ -4468,7 +4472,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("MCVA5.GainSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+        return self.quickSend("MCVA5.GainSet", [Preamp_Nr, Channel_Nr, Gain], ["H", "H", "H"], [])
 
     def MCVA5_GainGet(self, Preamp_Nr, Channel_Nr):
         """
@@ -4497,7 +4501,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("MCVA5.InputModeSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+        return self.quickSend("MCVA5.InputModeSet", [Preamp_Nr, Channel_Nr, Input_Mode], ["H", "H", "H"], [])
 
     def MCVA5_InputModeGet(self, Preamp_Nr, Channel_Nr):
         """
@@ -4527,7 +4531,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("MCVA5.CouplingSet", [Preamp_Nr, Channel_Nr], ["H", "H", "H"], [])
+        return self.quickSend("MCVA5.CouplingSet", [Preamp_Nr, Channel_Nr, Coupling], ["H", "H", "H"], [])
 
     def MCVA5_CouplingGet(self, Preamp_Nr, Channel_Nr):
         """
@@ -4586,7 +4590,7 @@ class Nanonis:
         - Continuous Read (unsigned int32) where 0=false, 1=true
         - Error described in the Response message>Body section
         """
-        return self.quickSend("MCVA5.ContStateUpdateGet", [Preamp_Nr, Channel_Nr], ["H"], ["I"])
+        return self.quickSend("MCVA5.ContStateUpdateGet", [Preamp_Nr], ["H"], ["I"])
 
     def MCVA5_SingleTempUpdate(self, Preamp_Nr):
         """
@@ -4628,7 +4632,7 @@ class Nanonis:
         - Continuous Read (unsigned int32) where 0=false, 1=true
         - Error described in the Response message>Body section
         """
-        return self.quickSend("MCVA5.ContTempUpdateGet", [Preamp_Nr, Channel_Nr], ["H"], ["I"])
+        return self.quickSend("MCVA5.ContTempUpdateGet", [Preamp_Nr], ["H"], ["I"])
 
     def PICtrl_OnOffSet(self, Controller_Index, Controller_Status):
         """
