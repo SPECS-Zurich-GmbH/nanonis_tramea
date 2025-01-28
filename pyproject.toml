@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nanonis_tramea"
-version = "1.0.4"
+version = "1.0.5"
 authors = [
-  { name="Samuel O'Neill", email="samuel.oneill@specs-zurich.com" },
+  { name="Samuel O'Neill", email="support@specs-zurich.com" },
 ]
 maintainers = [
-  { name="Aitziber Herrero", email="aitziber.herrero@specs-zurich.com" }
+  { name="Aitziber Herrero", email="support@specs-zurich.com" }
 ]
 description = "Python package for controlling Nanonis Tramea software through python"
 readme = "README.md"
