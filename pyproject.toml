@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nanonis_tramea"
-version = "1.0.5"
+version = "1.0.6"
 authors = [
   { name="Samuel O'Neill", email="support@specs-zurich.com" },
 ]
