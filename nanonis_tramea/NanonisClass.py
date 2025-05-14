@@ -3639,32 +3639,36 @@ class Nanonis:
         """
         return self.quickSend("TCPLog.StatusGet", [], [], ["i"])
 
-    def OsciHR_ChSet(self, Channel_index):
+    def OsciHR_ChSet(self, Osci_index, Signal_index):
         """
         OsciHR.ChSet
-        Sets the channel index of the Oscilloscope High Resolution.
+        Sets the measured signal index of the selected channel from the Oscilloscope High Resolution.
         Arguments: 
-        -- Channel index (int) sets the channel to be used, where index could be any value from 0 to 15
+        -- Osci index (int) sets the oscilloscope channel to be used, where index could be any value from 1 to 4 when the Oscilloscope supports 4 channels. 
+           Otherwise the channel index should be set to 0 for the 1-channel version of this graph
+        -- Signal index (int) sets the signal to be measured, where index could be any value from 0 to 15
         
         Return arguments (if Send response back flag is set to True when sending request message):
         
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("OsciHR.ChSet", [Channel_index], ["i"], [])
+        return self.quickSend("OsciHR.ChSet", [Osci_index, Signal_index], ["i", "i"], [])
 
-    def OsciHR_ChGet(self):
+    def OsciHR_ChGet(self, Osci_index):
         """
         OsciHR.ChGet
-        Returns the channel index of the Oscilloscope High Resolution.
-        Arguments: None
+        Returns the measured signal index of the selected channel from the Oscilloscope High Resolution.
+        Arguments: 
+        -- Osci index (int) sets the oscilloscope channel to be used, where index could be any value from 1 to 4 when the Oscilloscope supports 4 channels. 
+           Otherwise the channel index should be set to 0 for the 1-channel version of this graph
         Return arguments (if Send response back flag is set to True when sending request message):
         
-        -- Channel index (int) returns the channel used in the Oscilloscope High Resolution
+        -- Signal index (int) returns the measured signal index
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("OsciHR.ChGet", [], [], ["i"])
+        return self.quickSend("OsciHR.ChGet", [Osci_index], ["i"], ["i"])
 
     def OsciHR_OversamplSet(self, Oversampling_index):
         """
@@ -3694,12 +3698,14 @@ class Nanonis:
         """
         return self.quickSend("OsciHR.OversamplGet", [], [], ["i"])
 
-    def OsciHR_CalibrModeSet(self, Calibration_mode):
+    def OsciHR_CalibrModeSet(self, Osci_index, Calibration_mode):
         """
         OsciHR.CalibrModeSet
-        Sets the calibration mode of the Oscilloscope High Resolution.
+        Sets the calibration mode of the selected channel from the Oscilloscope High Resolution.
         Select between Raw Values or Calibrated Values. This setting affects the data displayed in the graph, and trigger level and hysteresis values. 
         Arguments: 
+        -- Osci index (int) sets the oscilloscope channel to be used, where index could be any value from 1 to 4 when the Oscilloscope supports 4 channels. 
+           Otherwise the channel index should be set to 0 for the 1-channel version of this graph
         -- Calibration mode (unsigned int16), where 0_Raw values and 1_Calibrated values
         
         Return arguments (if Send response back flag is set to True when sending request message):
@@ -3707,20 +3713,22 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("OsciHR.CalibrModeSet", [Calibration_mode], ["H"], [])
+        return self.quickSend("OsciHR.CalibrModeSet", [Osci_index, Calibration_mode], ["i", "H"], [])
 
-    def OsciHR_CalibrModeGet(self):
+    def OsciHR_CalibrModeGet(self, Osci_index):
         """
         OsciHR.CalibrModeGet
-        Returns the calibration mode of the Oscilloscope High Resolution.
-        Arguments: None
+        Returns the calibration mode of the selected channel from the Oscilloscope High Resolution.
+        Arguments: 
+        -- Osci index (int) sets the oscilloscope channel to be used, where index could be any value from 1 to 4 when the Oscilloscope supports 4 channels. 
+           Otherwise the channel index should be set to 0 for the 1-channel version of this graph
         Return arguments (if Send response back flag is set to True when sending request message):
         
         -- Calibration mode (unsigned int16), where 0_Raw values and 1_Calibrated values
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("OsciHR.CalibrModeGet", [], [], ["H"])
+        return self.quickSend("OsciHR.CalibrModeGet", [Osci_index], ["i"], ["H"])
 
     def OsciHR_SamplesSet(self, Number_of_samples):
         """
@@ -3792,11 +3800,13 @@ class Nanonis:
         """
         return self.quickSend("OsciHR.Run", [], [], [])
 
-    def OsciHR_OsciDataGet(self, Data_to_get, Timeout_s):
+    def OsciHR_OsciDataGet(self, Osci_index, Data_to_get, Timeout_s):
         """
         OsciHR.OsciDataGet
-        Returns the graph data from the Oscilloscope High Resolution.
+        Returns the graph data of the selected channel from the Oscilloscope High Resolution.
         Arguments: 
+        -- Osci index (int) sets the oscilloscope channel to be used, where index could be any value from 1 to 4 when the Oscilloscope supports 4 channels. 
+           Otherwise the channel index should be set to 0 for the 1-channel version of this graph
         -- Data to get (unsigned int16), where 0_Current returns the currently displayed data and 1_Next trigger waits for the next trigger to retrieve data
         -- Timeout (s) (float64), tip
         
@@ -3811,7 +3821,7 @@ class Nanonis:
         -- Error described in the Response message&gt;Body section
         
         """
-        return self.quickSend("OsciHR.OsciDataGet", [Data_to_get, Timeout_s], ["H", "d"],
+        return self.quickSend("OsciHR.OsciDataGet", [Osci_index, Data_to_get, Timeout_s], ["i", "H", "d"],
                               ["i", "*-c", "d", "i", "*f", "I"])
 
     def OsciHR_TrigModeSet(self, Trigger_mode):
